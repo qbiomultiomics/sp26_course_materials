@@ -1,1 +1,5 @@
 If you see this file locally, you have successfully performed a git pull. Congrats!
+For review, the steps to move folders from this class repository to your personal repository is:
+  1. cd [to this repository folder via Terminal]
+  2. git pull
+  3. scp -r [desired folder] [dir of your personal repository]
