@@ -1,0 +1,363 @@
+---
+title: "Intro to TCGA Clinical Data"
+date: 07/17/22
+updated: 02/16/26
+---
+
+### Secure copy (scp) this file to your qbio_490_name repository. DO NOT EDIT IN sp26_course_materials! ###
+
+###### (1) Set up your working environment
+
+Before running this code, make sure you are in the correct working directory with getwd() and setwd(). Otherwise you’ll have trouble tracking the data down!
+
+As good general practice to keep things organized, set the "analysis_data" folder as your working directory ("/PATH/TO/analysis_data") whenever you are working with TCGA files. This is the same folder than contains the TCGA data you downloaded in the previous step. For most of you, it should be /home1/your_name/490_cluster/analysis_data. 
+
+Set your working directory below:
+
+```{r setup}
+    #TODO: fill in file path to analysis_data 
+    knitr::opts_knit$set(root.dir = normalizePath("/PATH/TO/analysis_data")) 
+```
+
+Before you move on, go to your GitHub web browser, open your .gitignore, and make sure the following files are listed. 
+
+      "### TCGA Data
+      GDCdata
+      MANIFEST*
+      htseq_h5*
+      analysis_data"
+
+The .gitignore file lets Github know which files to NOT push. The loaded files from TCGA are quite large, so we don't want to push them to GitHub. It's also typically best to avoid putting raw data on GitHub.
+
+
+###### (1) Example data frames
+
+Going back to variables and object types, data frames are objects that store two-dimensional representations of data, often with row and column names. Data frames are the bread and butter of data analysis in R!
+
+Let's explore the built in mtcars data frame before we get to using the TCGA datafram to learn about this crucial data type.
+
+First, load in the data frame by running the following line of code. "mtcars" will then show up under "Data" in your environment panel.
+
+```{r Exercise 1.1}
+data(mtcars)
+```
+
+The easiest way to view a data frame is to simply click on it in your environment tab! This will open up the matrix in a new tab. You can then explore the data visually.
+
+However, this is not always helpful, especially when looking at larger or more complex data frames. We can use head() and str() to give us a better view in the console itself.
+
+```{r Exercise 1.2}
+head(mtcars) # just like in the terminal, you can use head to view the first few rows of a data frame
+```
+
+Here we can see the first 6 rows of the mtcars data frame. We can see the row names (Mazda RX4, Mazda RX4 Wag, etc.), the column names (mpg, cyl, disp, etc.), and the data types associated with each column (dbl: double-precision floating point number).
+
+```{r Exercise 1.3}
+str(mtcars) # str stands for structure
+```
+
+Running str() will give us info about the structure of the data frame. We can see the data type (data.frame), the number of rows (obs.) and columns (variables), the general data type of each column (num), and a preview of the data in each column.
+
+Note the "$" before each column name. In R, the dollar sign always refers to columns.
+We can view a singular column with the notation: df_name$row_name
+
+Use this syntax to view the mpg column of the mtcars data frame.
+
+```{r Exercise 1.4}
+# add code here
+
+```
+
+What if we want to view a column, but don't know it's exact name? We can get all column names (or all row names) by using the functions colnames() and rownames(). Call those below, then view the carburetor column using dollar sign notation.
+
+```{r Exercise 1.5}
+# call functions here
+
+mtcars$ # fill in name of carburetor column here
+```
+
+We can also view particular subsets of the data frame by using the df[row, column] notation.
+
+```{r Exercise 1.6}
+mtcars[2, 4] # access the value from the second row, fourth column (this is the horsepower of a Mazda RX4 Wag)
+
+mtcars[1,  ] # access all values in the first row (all info on the Mazda RX4)
+
+mtcars[ , 1] # access all values in the first column (mpg info for all cars)
+
+mtcars[1:5, c(1, 4, 6)] # rows one through five and columns 1, 4, and 6
+
+mtcars[-(3:30), ] # access everything EXCEPT rows 3 through 30
+
+mtcars[ , c(-(1:4), -6)] # access everything EXCEPT columns 1 through 4 and column 6
+
+mtcars["Duster 360" , "mpg"] # select the mpg (column) for only Duster 360 (row)
+
+```
+
+Select the horse power data for the Duster 360, Lincoln Continental, and Maserati Bora. Instead of manually viewing the matrix to determine which rows and column numbers you want to specify, use rownames() and colnames().
+
+```{r Exercise 1.7}
+# write code here
+```
+
+
+Oftentimes we want to edit data frames to add calculated columns, delete unnecessary rows, subset to a particular view, etc.
+
+You can create a column using the "$" notation to specify the new column name, and "<-" to assign some values to the new column. The syntax is as follows:
+
+```{r Exercise 1.8}
+data_frame$new_column <- values
+```
+
+Let's try this out! In the mtcars data frame, there is a column called "am". This column holds transmission information where 0 = automatic, and 1 = manual. But as of now, this isn't very clear without knowing that information.
+
+Create a new column called "transmission" that assigns the value "automatic" where am = 0, and "manual" where am = 1.
+
+You can use an ifelse statement to assign your values! Remember, ifelse() takes in three arguments: ifelse(test_condition, yes, no)
+
+```{r Exercise 1.9}
+# write code here
+
+
+```
+
+Now that we have the "transmission" column, the "am" column is no longer particularly useful. Let's delete it.
+
+You can easily delete a row/column by subsetting around it using df[row, column] notation. Simply choose all of the rows/columns you want to keep (ignoring the ones you want to delete), and assign the subset to either the original data frame variable (to permanently delete the rows/columns), or to a new variable storing an edited copy of the data frame. In general, it is best to create a copy that way you always have access to your original unedited data frame if needed.
+
+The syntax is as follows:
+
+```{r Exercise 1.10}
+df_copy <- df[rows_to_keep, columns_to_keep]
+```
+
+Use the above syntax to save a copy of the mtcars data without the "am" column. Remember to use colnames() to find the column number of "am". Also recall that to select row/columns to drop (hence selecting everything else), you can use "-index #".
+
+```{r Exercise 1.11}
+# write code here
+```
+
+View your new mtcars copy data frame to check that the "am" column was dropped.
+
+```{r Exercise 1.12}
+# write code here
+```
+
+
+
+###### (2) Query and retrieve the TCGA breast cancer clinical data 
+Now that you've worked with a simpler example dataset, it is time to work with TCGA breast cancer clinical dataset!
+
+Hint: The code you use here is the same as the code when you initially queried, downloaded, and retrieved the TCGA clinical data.
+
+```{r}
+clin_query <- #Fill in correct command
+  
+clinic <- #Fill in correct command
+
+colnames(clinic)[ colnames(clinic) == "bcr_patient_barcode" ] <- "Tumor_Sample_Barcode"
+```
+
+Querying TCGA data can take a while, even without downloading. A faster way to save and access the clinical data is to save the dataframe as a csv file on your local computer. Use the following command to do so:
+
+```{r}
+write.csv(clinic, "/PATH/TO/analysis_data/brca_clinical_data.csv", row.names=FALSE)
+```
+
+To read the csv back into your environment as a dataframe:
+
+```{r}
+clinic <- read.csv("/PATH/TO/analysis_data/brca_clinical_data.csv")
+```
+
+
+###### (3) Exploring the Data
+
+View the structure of the data as well as the first few lines. What two commands should you use?
+Answer the following questions based on the output of those commands: 
+# 1. How many rows are there? How many columns?
+# 2. What is the data type of $gender?
+# 3. What is the age in years of the 5th patient (barcode: TCGA-4H-AAAK)?
+# 4. How old was the 1st patient at their last follow up (barcode: TCGA-3C-AAAU)? HINT: you need to look at data from two columns to answer this
+
+```{r Exercise 3.1}
+# write code here
+```
+
+View the column and row names. What two commands should you use?
+
+```{r Exercise 3.2}
+# write code here
+```
+
+View the vital status column. What two notations can be used to view columns? 
+
+```{r Exercise 3.3}
+# write code here
+```
+
+###### (4) Plotting
+
+Choose two variables and make a scatter plot (use the plot() function).
+
+THINK: what types of variables can you use in a scatter plot (continuous, discrete, categorical). Look these up if you need help!
+
+For an extra challenge, add a plot title, axes titles, and colors to your plot.
+
+```{r Exercise 4.1}
+# create plot here
+```
+
+Choose two new variables and make a box plot (use the boxplot() function).
+
+THINK: what types of variables can you use in a box plot?
+
+For an extra challenge, add a plot title, axes titles, and confidence intervals to your plot.
+
+```{r Exercise 4.2}
+# create plot here
+```
+
+
+###### (5) Boolean Masking
+
+As discussed in lecture, a boolean mask is a vector of True and False values that allow for fast and efficient indexing of large dataframes in R. Boolean masks work as an extremely helpful implementation of R's vectorization abilities. 
+
+A significant portion of your coding work will be data cleaning and preparation using boolean masks. As such, it's important you are comfortable with making them.
+
+1) Create a mask to remove all NA values from vital_status
+```{r}
+# Filled in example for you! 
+vital_status_na_mask <- !is.na(clinic$vital_status)
+
+```
+
+2) Create a mask to select for male patients
+```{r}
+male_mask <-
+```
+
+3) Create a mask to select for patients under the age of 35 OR over 60 at diagnosis. 
+```{r}
+under30_over60_mask <-
+```
+
+4) Using your under30_over60_mask, create a new dataframe called no_middle_clinic which contains all the clinical data for patients under the age of 30 or over 60 at diagnosis
+
+```{r}
+no_middle_clinic <- 
+```
+
+
+###### (6) Kaplan-Meier Plotting
+
+To create a KM plot in R, we first need to load some required packages.
+
+```{r}
+if (!require(survival)) {
+  install.packages("survival")
+}
+
+if (!require(survminer)) {
+  install.packages("survminer")
+}
+
+if (!require(ggplot2)) {
+  install.packages("ggplot2")
+}
+
+```
+
+After installing packages as needed, we still need to load them into R to use them in our code.
+
+```{r}
+library(survival)
+library(survminer)
+library(ggplot2)
+```
+
+A KM plot allows us to stratify survival by some clinical feature (or -omic feature!) of interest, therefore providing a simple and understandable plot for seeing how different aspects of a patient's health influence the severity of a disease. Because this requires grouping by a feature, KM plots always involve some categorical value plotted against survival percentage over time. As such, we need to first choose or otherwise create a categorical variable of interest.
+
+For this example, let's create a KM plot to look at the relationship between breast cancer patient age and their rate of survival. 
+
+# 1. Data Preprocessing
+
+First, check if there are any NA values in age_at_diagnosis (Hint: use the is.na() function. If you don't remember how the function works, run ?is.na() in the console). Use Boolean indexing to remove the NA values.
+
+```{r}
+age_NA_mask <- 
+cleaned_clinic <- 
+```
+
+Create a new column called "age_category" in cleaned_clinic that contains the value "Young" if age_at_diagnosis is <=35, "Middle" if >35 and < 50, and "Old" if >=50. (Hint: use ifelse())
+
+Note: These age threshold are relatively arbitrary, and just the ages that we are using in this example. 
+
+```{r}
+cleaned_clinic$age_category <- 
+```
+
+KM Plots also requires a column for total number of days survived post diagnosis. However, TCGA records survival over time two ways: last_contact_days_to for patients who are still alive, and death_days_to for patients who passed away. If a patient is still alive, their value in the death_days_to column is the string "[Not Applicable]". Therefore, we need to create a new column called survival_time that combines the information in these two columns so there are no NA values.
+
+```{r}
+cleaned_clinic$survival_time <- 
+```
+
+If we check the data, we see that the values in survival_time are strings from the "" around each number. We need to convert the values to numeric in order to use them in the KM plot.
+```{r}
+cleaned_clinic$survival_time <- as.numeric(cleaned_clinic$survival_time)
+```
+
+
+Finally, we need to make a death event column that contains T if a patient has died, and F if the patient is alive. (Hint: cleaned_clinic$vital_status has "Alive" if a patient is alive and "Dead" if a patient passed.)
+```{r}
+cleaned_clinic$death_event <- 
+```
+
+# 2. Create Survminer Objects
+
+Run the following code block.
+```{r}
+survival_object <- Surv(time = cleaned_clinic$survival_time,
+                        event = cleaned_clinic$death_event)
+
+fit_object <- survfit(survival_object ~ age_category, data = cleaned_clinic)
+```
+
+# 3. Create the KM Plot
+
+Run the following code block. The KM plot should appear in the plot tab on the right. Manually expand the tab if you get an error about the plot being too small. 
+```{r}
+survplot <- ggsurvplot(fit_object,
+                       pval=TRUE,
+                       ggtheme = theme(plot.margin = unit(c(1,1,1,1), "cm")),
+                       legend = 'right')
+
+KM_plot <- survplot$plot + theme_bw() + theme(axis.title = element_text(size=20), 
+                                              axis.text = element_text(size=16),
+                                              legend.title = element_text(size=14),
+                                              legend.text = element_text(size=12))
+
+KM_plot
+```
+
+
+Answer the following questions:
+# 1. What does the y axis represent?
+
+# 2. What does the x axis represent?
+
+# 3. What age group appears to have the greatest rate of survival?
+
+# 4. What age group appears to have the worst rate of survival? 
+
+# 5. What is the approx. 15-year survival rate for "Old" breast cancer patients?
+
+# 6. What is the p-value? Is it statistically significant and what does that tell us about the relationship between age and breast cancer survival? 
+
+
+
+###### (6) Submitting Coding HW
+
+Your homework should be a completed secure copy (scp) of this file (original file in sp26_course_materials). Push this downloaded file to GitHub through your qbio_490_name local repository and submit a link to your GitHub repository to the Introduction To Clinical HW Brightspace Assignment.  
