@@ -62,9 +62,9 @@ str(rna_se)
 
 Use the dim() function to find the dimensions of the colData, rowRanges@elementMetadata, and unstranded dataframes. Record them below:
 
-  ~ colData (rows, cols): 1231, 98
-  ~ rowRanges@elementMetadata: 60660, 10
-  ~ rna_se@assays@data$unstranded: 60660, 1231
+  ~ colData (rows, cols): [Fill In]
+  ~ rowRanges@elementMetadata: [Fill In]
+  ~ rna_se@assays@data$unstranded: [Fill In]
 
 ```{r Exercise 1.2}
 # write code here
@@ -76,14 +76,14 @@ dim(rna_se@assays@data$unstranded)
 
 Fill out a description of the rows/columns of our data frames. You can use this as a cheat sheet moving forward.
   ~ colData
-        - Rows: patients
-        - Columns: clinical variables
+        - Rows: [Fill In]
+        - Columns: [Fill In]
   ~ rowRanges@elementMetadata
-        - Rows: genes
-        - Columns: gene info
+        - Rows: [Fill In]
+        - Columns: [Fill In]
   ~ unstranded (in assays)
-        - Rows: genes
-        - Columns: patients
+        - Rows: [Fill In]
+        - Columns: [Fill In]
   
 ```{r Exercise 1.3}
 # colData: 
@@ -97,6 +97,10 @@ colnames(rna_se@rowRanges@elementMetadata)
 # what are the rows...?
 
 # unstranded: 
+rownames(rna_se@assays@data$unstranded)
+colnames(rna_se@assays@data$unstranded)
+
+# what are these?
 # Hint: Do the rows/cols match dimensions of other dataframes?
 
 ```
@@ -146,7 +150,7 @@ Four columns in *rna_clinical* contain nested lists. To save the dataframe as a 
 
 colnames_mask <- !(colnames(rna_clinical) %in% c("treatments", "primary_site", "disease_type", 
                                                   "sites_of_involvement"))
-#we are masking out COLUMNS here
+#we are masking out COLUMNS here, so the comma before the mask.
 rna_clinical <- rna_clinical[,colnames_mask]
 
 ```
@@ -169,7 +173,7 @@ Call *head()* on *rowRanges@elementMetadata*:
 
 ```{r Exercise 3.1}
 # write code here
-head(rna_se@rowRanges@elementMetadata)
+head()
 
 ```
 
@@ -180,16 +184,22 @@ rna_genes <- rna_se@rowRanges@elementMetadata
 
 ```
 
-Use the *as.data.frame()* function to change this from an S4 object to a data frame object.
+Use the *as.data.frame()* function on *rna_genes* to change it from an S4 object to a data frame object.
 
 ```{r Exercise 3.3}
-rna_genes <- as.data.frame(rna_genes)
+rna_genes <- as.data.frame()
 
 ```
 
 ###### (4) Assays - RNA expression data
 
 What are the names of the 6 assays?
+1. 
+2.
+3.
+4. 
+5. 
+6. 
 
 ```{r Exercise 4.1}
 # access the assays here
@@ -198,17 +208,21 @@ rna_se@assays@data
 ```
 
 Create a new data frame called "rna_counts" that contains the data from *unstranded*.
+```{r Exercise 4.2}
+
+rna_counts <- rna_se@assays@data$[FILL IN]
+rna_counts <- as.data.frame('FILL IN')
+
+```
+
+
 Recall the patient with NA age data? We need to exclude that patient. We can use the same mask to do this.
 
 Notice how in this case, we apply the mask to the columns of the *rna_counts* data frame, unlike how it was applied to the rows in the *rna_clinical* data frame.
 
 This is because the two data frames align in a unique way: the rows of *rna_clinical* match up with the columns of *rna_counts*. These are where the sample/patients are situated in either data frames.
 
-```{r Exercise 4.2}
-
-rna_counts <- rna_se@assays@data$unstranded
-rna_counts <- as.data.frame(rna_counts)
-
+```{r Exercise 4.3}
 rna_counts <- rna_counts[,age_NA_mask]
 
 ```
@@ -216,7 +230,7 @@ rna_counts <- rna_counts[,age_NA_mask]
 Inspect the data for the first 5 patients (columns 1-5) and the first 15 genes (rows 1-15).
 
 ```{r Exercise 4.3}
-rna_counts[1:15, 1:5]
+rna_counts[]
 
 ```
 
@@ -226,9 +240,6 @@ rna_counts[1:15, 1:5]
 Call *rownames()* and *colnames()* on *rna_clinical*.
 
 ```{r Exercise 5.1}
-
-rownames(rna_clinical)
-colnames(rna_clinical)
 
 ```
 
@@ -249,7 +260,7 @@ Remember: ifelse(expression, x, y), where x happens if the expression is true, a
 Just like we did to "clinical", we are going to create a column in *rna_clinical* for *age_category*. Our cutoff will be "young" as <= 58 y/o, and "old" as > 58 y/o.
 
 ```{r Exercise 5.4}
-rna_clinical$age_category <- ifelse(rna_clinical$age_at_index <= 58, "young", "old")
+rna_clinical$age_category <- ifelse()
 
 ```
 
@@ -259,16 +270,15 @@ Let's move on to *rna_genes*. Call *rownames()* and *colnames()* on *rna_genes*.
 
 ```{r Exercise 5.5}
 
-rownames(rna_genes)
-colnames(rna_genes)
-
 ```
 
-Oh no! These row names don't look very informative. We know that the rows in *rna_genes* symbolize genes, so what should we set *rownames()* to? Which is better, *gene_name* or *gene_id*?
+Oh no! These row names don't look very informative. We know that the rows in *rna_genes* symbolize genes, so what should we set *rownames()* to? One of the following commands will give an error.
 
 ```{r Exercise 5.6}
 
 rownames(rna_genes) <- rna_genes$gene_id
+
+rownames(rna_genes) <- rna_genes$gene_name
 
 ```
 
@@ -279,23 +289,20 @@ Now that *rna_genes* has informative row/column names, let's move on to *rna_cou
 
 ```{r Exercise 5.7}
 
-rownames(rna_counts)
-colnames(rna_counts)
-
 ```
 
 Uh oh! Looks like neither the row nor column names are very informative. Given what we did to the other data frames, add column and row names to *rna_counts*. Name the columns based on the patient barcodes (ie the row names for *rna_clinical*), and name the rows based on the gene id's (ie the row names for *rna_genes*).
 
 ```{r Exercise 5.8}
 
-rownames(rna_counts) <- rna_genes$gene_id
-colnames(rna_counts) <- rownames(rna_clinical)
+rownames(rna_counts) <- [FILL IN]
+colnames(rna_counts) <- [FILL IN]
 
 ```
 
 Now, if we look at the data, we'll see the row names set as the gene IDs and the column names as the patient sample barcodes.
 
-```{r}
+```{r Exercise 5.9}
 
 rownames(rna_counts)
 colnames(rna_counts)
@@ -311,7 +318,7 @@ Great! Now all of our data frames are ready for exploration and analysis.
 
 Loading data from TCGA can be time consuming. It's much faster to access csv files.
 
-Save *rna_clinical* to your *analysis_data* directory.
+Save *rna_clinical* to your *analysis_data* directory. Make sure your working directory is set properly.
 
 ```{r Exercise 6.1}
 write.csv(rna_clinical, "brca_rna_clinical_data.csv", row.names = TRUE)
@@ -334,7 +341,7 @@ write.csv(rna_counts, "brca_rna_count_data.csv", row.names = TRUE)
 
 ###### PART 2
 
-In SummarizedExperiment Tutorial, you learned how to manipulate the SummarizedExperiment data structure and turn it into more readable dataframes, saving them as rna_counts, rna_clinical, and rna_genes. In this semi-guided assignment, you will use these dataframes to perform differential expression analysis based on tumor status.
+In Part 1, you learned how to manipulate the SummarizedExperiment data structure and turn it into more readable dataframes, saving them as rna_counts, rna_clinical, and rna_genes. In part 2, you will use these dataframes to perform differential expression analysis based on tumor status.
 
 *Pre-Assignment*
 Once again, use the knitr function to set your working directory to your analysis_data folder in 490_cluster.
@@ -351,7 +358,7 @@ BiocManager::install("DESeq2")
 ```
 
 *1*
-Read in the rna_clinical, rna_genes, and rna_counts dataframes which you made in the "SummarizedExperiment Guided Tutorial" R Notebook
+Read in the rna_clinical, rna_genes, and rna_counts dataframes which you made in Part 1.
 
 ```{r}
 
