@@ -1,0 +1,182 @@
+---
+title: "Intro to Epigenomics"
+author: "Wade Boohar, updated by Jeanne Revilla"
+date: "11/03/24"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+updated: 03/08/26
+---
+
+```{r setup}
+ knitr::opts_knit$set(root.dir = normalizePath("/home1/jrevilla/490_cluster/analysis_data/"))
+```
+
+#Package Download and Data-cleaning
+```{r}
+if (!require("sesameData", quietly = TRUE))
+BiocManager::install("sesameData")
+
+if (!require("sesame", quietly = TRUE))
+BiocManager::install("sesame")
+
+if (!require("limma", quietly = TRUE))
+BiocManager::install("limma")
+```
+
+
+#Load in all necessary packages
+```{r}
+library(TCGAbiolinks)
+library(sesame)
+library(sesameData)
+library(limma)
+library(ggplot2)
+```
+
+#Query, Download, and Prepare the data.
+```{r}
+query <- GDCquery(project = "TCGA-BRCA",
+                  data.category = "DNA Methylation",
+                  data.type = "Methylation Beta Value",
+                  platform = "Illumina Human Methylation 450",
+                  data.format = "Dataframe")
+#GDCdownload(query)      <-- you will need to run this!
+methylation450 <- GDCprepare(query)
+```
+The above data requires a LOT of memory. My recommendation: GDCdownload() and GDCprepare() in separate R sessions.
+R requires a lot of memory for both.
+
+```{r}
+methylation_clinical <- as.data.frame(methylation450@colData)
+betas <- as.data.frame(methylation450@assays@data@listData) #takes a longer time
+cpg_sites <- as.data.frame(methylation450@rowRanges@elementMetadata)
+
+column_mask <- ifelse(colnames(methylation_clinical) %in% c('treatments', 'primary_site', 'disease_type','sites_of_involvement'), F, T)
+
+methylation_clinical <- methylation_clinical[,column_mask]
+write.csv(methylation_clinical, 'brca_methylation_clinical.csv')
+
+
+site_mask <- !grepl('-', cpg_sites$gene) & !grepl(';', cpg_sites$gene) & !is.na(cpg_sites$gene) & complete.cases(betas)
+betas <- betas[site_mask,]
+cpg_sites <- cpg_sites[site_mask,]
+
+write.csv(betas, 'brca_methylation_betas.csv') #takes a longer time
+write.csv(cpg_sites, 'brca_cpg_sites.csv')
+```
+
+Use the code below if you are loading in your data (i.e. you downloaded the data and closed the session, but you are back to continue working)
+```{r}
+methylation_clinical <- read.csv('brca_methylation_clinical.csv', row.names = 1)
+betas <- read.csv('brca_methylation_betas.csv', row.names=1)
+cpg_sites <- read.csv('brca_cpg_sites.csv', row.names = 1)
+```
+
+
+#(1) Naive Differential Methylation
+```{r}
+#masking out NAs
+na_mask <- !is.na(methylation_clinical$age_at_diagnosis)
+methylation_clinical <- methylation_clinical[na_mask,]
+betas_clean <- betas[,na_mask]
+
+#creating our variable of interest & deciding the base group
+methylation_clinical$age_category <- ifelse(methylation_clinical$age_at_diagnosis >= 16425, "old", "young")
+
+#define your comparison and base group
+young_mask <- methylation_clinical$age_category == "young"
+methylation_clinical$old <- !young_mask #old is comparison, young is base
+
+#fitting linear models using a "target value"
+mval <- t(apply(betas_clean, 1, function(x) log2(x/(1-x)))) 
+#mvalue is another statistic for methylation, centered at 0 and ranges from -1 to 1
+#this step will take a few seconds to run
+
+design <- model.matrix(~ old, data = methylation_clinical)
+fit <- lmFit(mval, design)
+fit2 <- eBayes(fit)
+```
+
+```{r}
+#Extracting model into dataframe
+dat <- data.frame(foldchange = fit[["coefficients"]][,2], logPvalue =  -log10(p.adjust(fit2[["p.value"]][,2],method='BY')), geneName = cpg_sites$gene)
+dat$threshold <- as.factor(abs(dat$foldchange) < 1)
+
+#Visualization
+cols <- c("TRUE" = "grey", "FALSE" = "blue")
+ggplot(data=dat, aes(x=foldchange, y = logPvalue)) +
+  geom_point(alpha=.2, size=0.6) +
+  scale_colour_manual(values = cols) +
+  geom_vline(xintercept = 1, colour="#990000", linetype="dashed") + 
+  geom_vline(xintercept = - 1, colour="#990000", linetype="dashed") +
+  geom_hline(yintercept = 2, colour = "#990000", linetype="dashed") +
+  theme(legend.position="none") +
+  xlab("Fold Change") +
+  ylab("-log10 p value") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#Saving results to a .csv file
+write.csv(dat, "methylation_results_age.csv")
+```
+
+#(2) Direct comparison of methylation status to transcriptional activity
+...INSERT DESeq2 Stuff here to generate 'results'...
+```{r}
+de_results <- read.csv("deSeq_results_age.csv")
+
+rna_clinical <- read.csv("brca_rna_clinical_data.csv", row.names = 1)
+rna_genes <- read.csv("brca_rna_gene_data.csv")
+rna_counts <- read.csv("brca_rna_count_data.csv", row.names = 1)
+```
+
+
+```{r}
+#Extract genes of interest
+downregulated <- de_results[(de_results$log2FoldChange < 1), 'gene_name']
+hypermethylated <- dat[dat$foldchange > 1.5, 'geneName'] #what cutoff should you use here?
+interest_genes <- intersect(downregulated, hypermethylated)
+```
+
+```{r}
+#Explore your gene of interest
+GENE<-"DNAH10"
+
+gene_counts_mask <- rna_genes$gene_name == GENE
+gene_betas_mask <- cpg_sites$gene == GENE
+
+#What are we doing here?
+rna_clinical_old <- rna_clinical$age_category == "old"
+methylation_clinical_old <- methylation_clinical$age_category == "old"
+
+rna_clinical_young <- rna_clinical$age_category == "young"
+methylation_clinical_young <- methylation_clinical$age_category == "young"
+
+#What are we doing here?
+rna_old <- as.numeric(rna_counts[gene_counts_mask, rna_clinical_old])
+methylation_old <- (betas[gene_betas_mask, methylation_clinical_old])
+
+rna_young <- as.numeric(rna_counts[gene_counts_mask, rna_clinical_young])
+methylation_young <- (betas[gene_betas_mask, methylation_clinical_young])
+```
+
+```{r}
+#Show transcription differences
+boxplot(rna_young, rna_old, xlab='Group', ylab='Counts', names=c('young', 'old'),
+        col=c("blue","red"))
+```
+
+```{r}
+#Show methylation differences at cpg sites in this gene 
+plot(1:dim(methylation_young)[1], apply(methylation_young, 1, mean), col='blue', type='h', lwd=3, ylab='Average Beta', xlab='CpG sites')
+
+lines(1.3:(dim(methylation_old)[1]+0.3), apply(methylation_old, 1, mean), col='red', type='h', lwd=3)
+
+legend("topright",
+       legend=c("Young", "Old"),
+       col=c("blue", "red"),
+       lwd=3,
+       cex=0.7)
+```
